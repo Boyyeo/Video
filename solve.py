@@ -12,6 +12,17 @@ Solution phase of Choleski's decomposition method
 '''
 import numpy as np
 import math
+import torch.nn as nn
+
+class CholesKeyModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+      
+    def forward(self, lhs, rhs):
+        L = choleski(lhs)
+        y = choleskiSol(rhs.squeeze(), L.squeeze())
+        return y
+
 
 
 def choleski(a):
@@ -46,19 +57,27 @@ y = ckpt['y']
 
 print('lhs shape:{} rhs shape:{} L shape:{} y shape:{}'.format(lhs.shape, rhs.shape, L.shape, y.shape))
 
-#L_recomputed = cholesky_decomposition(lhs)
+
+
 print('lhs:', lhs.shape)
-L_recomputed = choleski(lhs.clone().squeeze())
-#print('L_recomputed:', L_recomputed)
-#torch.linalg.cholesky(lhs)
+L_recomputed = choleski(lhs.clone().squeeze()) 
 print('L and L_recomputed close:', torch.allclose(L, L_recomputed))  
 print('difference between L and L_recomputed:', (L - L_recomputed).abs().max())   
 
 
-#y_recomputed = torch.cholesky_solve(rhs.unsqueeze(-1), L).squeeze(-1)
 print('L shape:', L.shape)
 print('L_recomputed shape:', L_recomputed.shape)
 print('rhs shape:', rhs.shape)
 y_recomputed = choleskiSol(rhs.squeeze(), L.squeeze())
 print('y and y_recomputed close:', torch.allclose(y, y_recomputed))
 print('difference between y and y_recomputed:', (y - y_recomputed).abs().max())
+
+
+
+
+model = CholesKeyModel()    
+dummy_input = (lhs.clone().squeeze(), rhs.squeeze())
+model_trace = torch.jit.trace(model, dummy_input) 
+model_name = 'choleski_model'
+# 跟踪法与直接 torch.onnx.export(model, ...)等价 
+torch.onnx.export(model_trace, dummy_input, f'{model_name}_trace.onnx') 
